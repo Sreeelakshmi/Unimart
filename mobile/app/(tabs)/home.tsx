@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Pressable,
+  Platform,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { ClayHeader, ClayCard, ProductCard, ClayButton } from '@components/index';
@@ -174,6 +175,10 @@ export default function HomeScreen() {
               keyExtractor={(item) => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
+              initialNumToRender={4}
+              maxToRenderPerBatch={4}
+              windowSize={3}
+              removeClippedSubviews={Platform.OS === 'android'}
               renderItem={({ item }) => (
                 <ProductCard product={item} style={styles.productCard} />
               )}

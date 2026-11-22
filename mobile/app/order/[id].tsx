@@ -16,16 +16,18 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { ClayHeader, ClayCard, ClayButton, ClayInput, StatusBadge } from '@components/index';
-import { Colors, Spacing, Radius, Typography, FontSize, FontWeight } from '@constants/theme';
+import { Colors, Spacing, Radius, Typography, FontSize, FontWeight, PLACEHOLDER_PRODUCT_IMAGE } from '@constants/theme';
 import { fetchOrderById, updateOrderStatus, submitReturnRequest } from '../../services/api';
 import type { Order, ReturnReason } from '../../../shared/types';
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300/B9A0EB/FFFFFF?text=🛍️';
+const PLACEHOLDER_IMAGE = PLACEHOLDER_PRODUCT_IMAGE;
 
 export default function OrderDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getToken, userId } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ export default function OrderDetailsScreen() {
     if (!id) return;
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Authentication required.');
       const data = await fetchOrderById(token, id);
       setOrder(data);
@@ -51,7 +53,7 @@ export default function OrderDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, getToken]);
+  }, [id]);
 
   useEffect(() => {
     loadOrder();
@@ -137,6 +139,7 @@ export default function OrderDetailsScreen() {
       <ClayHeader
         title={`Order #${order.id.slice(0, 8)}`}
         subtitle={`Placed on ${new Date(order.createdAt).toLocaleDateString()}`}
+        showBack={true}
       />
 
       <ScrollView contentContainerStyle={styles.scroll}>

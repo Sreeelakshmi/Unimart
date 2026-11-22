@@ -16,7 +16,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { ClayHeader, ClayCard, ClayInput, ClayButton, StatusBadge } from '@components/index';
-import { Colors, Spacing, Radius, Typography, FontSize, FontWeight } from '@constants/theme';
+import { Colors, Spacing, Radius, Typography, FontSize, FontWeight, PLACEHOLDER_PRODUCT_IMAGE } from '@constants/theme';
 import {
   fetchProductById,
   createOrder,
@@ -26,12 +26,14 @@ import {
 } from '../../../services/api';
 import type { Product, CampusMeetupLocation, PaymentMethod } from '../../../../shared/types';
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x300/B9A0EB/FFFFFF?text=🛍️';
+const PLACEHOLDER_IMAGE = PLACEHOLDER_PRODUCT_IMAGE;
 
 export default function CheckoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getToken, userId } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function CheckoutScreen() {
   const loadProductAndLocations = useCallback(async () => {
     if (!id) return;
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       const [productData, locationsData] = await Promise.all([
         fetchProductById(id, token),
         fetchMeetupLocations().catch(() => []),
@@ -62,7 +64,7 @@ export default function CheckoutScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, getToken]);
+  }, [id]);
 
   useEffect(() => {
     loadProductAndLocations();
@@ -159,7 +161,7 @@ export default function CheckoutScreen() {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-        <ClayHeader title="Checkout" subtitle="Confirm campus pickup & meetup details" />
+        <ClayHeader title="Checkout" subtitle="Confirm campus pickup & meetup details" showBack={true} />
 
         {/* Product summary card */}
         {product && (

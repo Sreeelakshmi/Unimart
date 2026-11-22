@@ -16,13 +16,15 @@ import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { ClayHeader, ClayCard, ClayButton } from '@components/index';
 import { Colors, Spacing, Typography } from '@constants/theme';
-import { fetchMyProfile } from '../../services/api';
+import { fetchMyProfile, isMockEnabled } from '../../services/api';
 import type { UserProfile } from '../../../shared/types';
 
 export default function ProfileScreen() {
   const { user } = useUser();
   const { signOut, getToken } = useAuth();
   const router = useRouter();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,12 @@ export default function ProfileScreen() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const token = await getToken();
+      if (isMockEnabled()) {
+        const data = await fetchMyProfile('mock-token');
+        setProfile(data);
+        return;
+      }
+      const token = await getTokenRef.current();
       if (!token) return;
       const data = await fetchMyProfile(token);
       setProfile(data);
@@ -40,7 +47,7 @@ export default function ProfileScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
     loadProfile();

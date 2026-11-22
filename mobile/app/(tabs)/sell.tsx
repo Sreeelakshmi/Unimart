@@ -23,6 +23,7 @@ import {
   uploadProductImages,
   getAISuggestions,
   evaluateListingQuality,
+  isMockEnabled,
 } from '../../services/api';
 import type { ProductCategory, ProductCondition } from '../../../shared/types';
 
@@ -101,7 +102,7 @@ export default function SellScreen() {
   const handleAIAssist = async () => {
     setAiLoading(true);
     try {
-      const token = await getToken();
+      const token = isMockEnabled() ? 'mock-token' : await getToken();
       if (!token) throw new Error('Please sign in to use the AI Listing Assistant.');
 
       const [suggestRes, evalRes] = await Promise.all([
@@ -165,7 +166,7 @@ export default function SellScreen() {
     setStatusMessage('Preparing listing...');
 
     try {
-      const token = await getToken();
+      const token = isMockEnabled() ? 'mock-token' : await getToken();
       if (!token) {
         throw new Error('Please sign in to list items for sale.');
       }

@@ -1,5 +1,6 @@
 // mobile/services/api.ts
 // Central API client connecting React Native to the Express backend
+// Supports dynamic switching and fallback to realistic Campus Marketplace mock store
 
 import type {
   Product,
@@ -31,8 +32,19 @@ import type {
   ApiSuccess,
 } from '../../shared/types';
 
+import { mockStore } from '../data/mock/mockStore';
+
+export { mockStore };
+
 const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+export const isMockEnabled = (): boolean => {
+  return (
+    process.env.EXPO_PUBLIC_USE_MOCK_DATA === 'true' ||
+    process.env.EXPO_PUBLIC_USE_MOCK === 'true'
+  );
+};
 
 /**
  * Standard fetch helper handling JSON responses, errors, and authentication headers.
@@ -52,22 +64,35 @@ async function apiRequest<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-  const json: ApiResponse<T> = await response.json().catch(() => ({
-    success: false,
-    error: 'PARSE_ERROR',
-    message: `Server returned HTTP ${response.status}`,
-  }));
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-  if (!json.success) {
-    throw new Error(json.message || json.error || 'API Request failed');
+    const json: ApiResponse<T> = await response.json().catch(() => ({
+      success: false,
+      error: 'PARSE_ERROR',
+      message: `Server returned HTTP ${response.status}`,
+    }));
+
+    if (!json.success) {
+      throw new Error(json.message || json.error || 'API Request failed');
+    }
+
+    return (json as ApiSuccess<T>).data;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timed out after 4s connecting to ${API_BASE_URL}`);
+    }
+    throw err;
   }
-
-  return (json as ApiSuccess<T>).data;
 }
 
 // ── Auth APIs ──────────────────────────────────────────────
@@ -81,6 +106,9 @@ export async function syncUserWithBackend(
     avatarUrl?: string;
   },
 ) {
+  if (isMockEnabled()) {
+    return mockStore.syncUser(payload);
+  }
   return apiRequest<UserProfile>(
     '/auth/sync',
     {
@@ -92,6 +120,9 @@ export async function syncUserWithBackend(
 }
 
 export async function fetchMyProfile(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getUserProfile();
+  }
   return apiRequest<UserProfile>('/auth/me', { method: 'GET' }, token);
 }
 
@@ -108,6 +139,9 @@ export interface FetchProductsParams {
 }
 
 export async function fetchProducts(params: FetchProductsParams = {}) {
+  if (isMockEnabled()) {
+    return mockStore.getProducts(params);
+  }
   const query = new URLSearchParams();
   if (params.search) query.append('search', params.search);
   if (params.category) query.append('category', params.category);
@@ -124,10 +158,16 @@ export async function fetchProducts(params: FetchProductsParams = {}) {
 }
 
 export async function fetchProductById(id: string, token?: string | null) {
+  if (isMockEnabled()) {
+    return mockStore.getProductById(id);
+  }
   return apiRequest<Product>(`/products/${id}`, { method: 'GET' }, token);
 }
 
 export async function fetchMyListings(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getMyListings();
+  }
   return apiRequest<Product[]>('/products/seller/me', { method: 'GET' }, token);
 }
 
@@ -135,6 +175,9 @@ export async function createProduct(
   token: string,
   payload: CreateProductPayload,
 ) {
+  if (isMockEnabled()) {
+    return mockStore.createProduct(payload);
+  }
   return apiRequest<Product>(
     '/products',
     {
@@ -150,6 +193,9 @@ export async function updateProduct(
   id: string,
   payload: UpdateProductPayload,
 ) {
+  if (isMockEnabled()) {
+    return mockStore.updateProduct(id, payload);
+  }
   return apiRequest<Product>(
     `/products/${id}`,
     {
@@ -161,6 +207,9 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(token: string, id: string) {
+  if (isMockEnabled()) {
+    return mockStore.deleteProduct(id);
+  }
   return apiRequest<null>(
     `/products/${id}`,
     {
@@ -176,6 +225,14 @@ export async function uploadProductImages(
   token: string,
   imageUris: string[],
 ): Promise<string[]> {
+  if (isMockEnabled()) {
+    // Return realistic uploaded image URLs
+    return imageUris.map((uri, idx) => {
+      if (uri.startsWith('http://') || uri.startsWith('https://')) return uri;
+      return `https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=400&q=75&auto=format&mock=img_${idx + 1}`;
+    });
+  }
+
   const formData = new FormData();
 
   imageUris.forEach((uri, index) => {
@@ -197,9 +254,7 @@ export async function uploadProductImages(
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
-      // Do not manually set Content-Type for FormData in React Native; fetch sets the multipart boundary automatically
     },
-    body: formData,
   });
 
   const json = await response.json();
@@ -213,10 +268,16 @@ export async function uploadProductImages(
 // ── Admin Moderation APIs ──────────────────────────────────
 
 export async function fetchPendingApprovals(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getPendingApprovals();
+  }
   return apiRequest<Product[]>('/admin/pending', { method: 'GET' }, token);
 }
 
 export async function approveProduct(token: string, id: string) {
+  if (isMockEnabled()) {
+    return mockStore.approveProduct(id);
+  }
   return apiRequest<Product>(
     `/admin/products/${id}/approve`,
     {
@@ -231,6 +292,9 @@ export async function rejectProduct(
   id: string,
   reason: string,
 ) {
+  if (isMockEnabled()) {
+    return mockStore.rejectProduct(id, reason);
+  }
   return apiRequest<Product>(
     `/admin/products/${id}/reject`,
     {
@@ -244,6 +308,9 @@ export async function rejectProduct(
 // ── Orders API ─────────────────────────────────────────────
 
 export async function createOrder(token: string, payload: CreateOrderPayload) {
+  if (isMockEnabled()) {
+    return mockStore.createOrder(payload);
+  }
   return apiRequest<Order>(
     '/orders',
     {
@@ -255,14 +322,23 @@ export async function createOrder(token: string, payload: CreateOrderPayload) {
 }
 
 export async function fetchMyBuyerOrders(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getBuyerOrders();
+  }
   return apiRequest<Order[]>('/orders', { method: 'GET' }, token);
 }
 
 export async function fetchMySellerOrders(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getSellerOrders();
+  }
   return apiRequest<Order[]>('/orders/seller', { method: 'GET' }, token);
 }
 
 export async function fetchOrderById(token: string, id: string) {
+  if (isMockEnabled()) {
+    return mockStore.getOrderById(id);
+  }
   return apiRequest<Order>(`/orders/${id}`, { method: 'GET' }, token);
 }
 
@@ -271,6 +347,9 @@ export async function updateOrderStatus(
   id: string,
   payload: UpdateOrderPayload,
 ) {
+  if (isMockEnabled()) {
+    return mockStore.updateOrderStatus(id, payload);
+  }
   return apiRequest<Order>(
     `/orders/${id}/status`,
     {
@@ -284,10 +363,16 @@ export async function updateOrderStatus(
 // ── Wishlist API ───────────────────────────────────────────
 
 export async function fetchWishlist(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getWishlist();
+  }
   return apiRequest<Product[]>('/wishlist', { method: 'GET' }, token);
 }
 
 export async function addToWishlist(token: string, productId: string) {
+  if (isMockEnabled()) {
+    return mockStore.addToWishlist(productId);
+  }
   return apiRequest<{ inWishlist: boolean; productId: string }>(
     `/wishlist/${productId}`,
     { method: 'POST' },
@@ -296,6 +381,9 @@ export async function addToWishlist(token: string, productId: string) {
 }
 
 export async function removeFromWishlist(token: string, productId: string) {
+  if (isMockEnabled()) {
+    return mockStore.removeFromWishlist(productId);
+  }
   return apiRequest<{ inWishlist: boolean; productId: string }>(
     `/wishlist/${productId}`,
     { method: 'DELETE' },
@@ -304,6 +392,9 @@ export async function removeFromWishlist(token: string, productId: string) {
 }
 
 export async function checkWishlist(token: string, productId: string) {
+  if (isMockEnabled()) {
+    return mockStore.checkWishlist(productId);
+  }
   return apiRequest<{ inWishlist: boolean }>(
     `/wishlist/check/${productId}`,
     { method: 'GET' },
@@ -314,14 +405,23 @@ export async function checkWishlist(token: string, productId: string) {
 // ── Messages API ───────────────────────────────────────────
 
 export async function fetchConversations(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getConversations();
+  }
   return apiRequest<Conversation[]>('/messages/conversations', { method: 'GET' }, token);
 }
 
 export async function fetchOrderMessages(token: string, orderId: string) {
+  if (isMockEnabled()) {
+    return mockStore.getOrderMessages(orderId);
+  }
   return apiRequest<Message[]>(`/messages/order/${orderId}`, { method: 'GET' }, token);
 }
 
 export async function sendMessage(token: string, payload: SendMessagePayload) {
+  if (isMockEnabled()) {
+    return mockStore.sendMessage(payload);
+  }
   return apiRequest<Message>(
     '/messages',
     {
@@ -335,20 +435,32 @@ export async function sendMessage(token: string, payload: SendMessagePayload) {
 // ── Notifications API ──────────────────────────────────────
 
 export async function fetchNotifications(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getNotifications();
+  }
   return apiRequest<AppNotification[]>('/notifications', { method: 'GET' }, token);
 }
 
 export async function markNotificationAsRead(token: string, id: string) {
+  if (isMockEnabled()) {
+    return mockStore.markNotificationAsRead(id);
+  }
   return apiRequest<AppNotification>(`/notifications/${id}/read`, { method: 'PATCH' }, token);
 }
 
 export async function markAllNotificationsAsRead(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.markAllNotificationsAsRead();
+  }
   return apiRequest<{ success: boolean; message: string }>('/notifications/read-all', { method: 'PATCH' }, token);
 }
 
 // ── AI Listing Assistant API ────────────────────────────────
 
 export async function getAISuggestions(token: string, payload: AISuggestionRequest) {
+  if (isMockEnabled()) {
+    return mockStore.getAISuggestions(payload);
+  }
   return apiRequest<AISuggestionResponse>(
     '/ai/suggest',
     { method: 'POST', body: JSON.stringify(payload) },
@@ -357,6 +469,9 @@ export async function getAISuggestions(token: string, payload: AISuggestionReque
 }
 
 export async function evaluateListingQuality(token: string, payload: AISuggestionRequest) {
+  if (isMockEnabled()) {
+    return mockStore.evaluateListingQuality(payload);
+  }
   return apiRequest<{ qualityScore: number; feedback: string[]; improvements: string[]; isQualityPass: boolean }>(
     '/ai/evaluate-listing',
     { method: 'POST', body: JSON.stringify(payload) },
@@ -367,16 +482,25 @@ export async function evaluateListingQuality(token: string, payload: AISuggestio
 // ── Campus Meetup Locations API ─────────────────────────────
 
 export async function fetchMeetupLocations() {
+  if (isMockEnabled()) {
+    return mockStore.getMeetupLocations();
+  }
   return apiRequest<CampusMeetupLocation[]>('/meetup-locations', { method: 'GET' });
 }
 
 export async function fetchMeetupLocationById(id: string) {
+  if (isMockEnabled()) {
+    return mockStore.getMeetupLocationById(id);
+  }
   return apiRequest<CampusMeetupLocation>(`/meetup-locations/${id}`, { method: 'GET' });
 }
 
 // ── Community Moderation & Reports API ──────────────────────
 
 export async function submitReport(token: string, payload: CreateReportPayload) {
+  if (isMockEnabled()) {
+    return mockStore.submitReport(payload);
+  }
   return apiRequest<CommunityReport>(
     '/reports',
     { method: 'POST', body: JSON.stringify(payload) },
@@ -387,6 +511,9 @@ export async function submitReport(token: string, payload: CreateReportPayload) 
 // ── Digital Payments API ────────────────────────────────────
 
 export async function initiatePayment(token: string, payload: InitiatePaymentPayload) {
+  if (isMockEnabled()) {
+    return mockStore.initiatePayment(payload);
+  }
   return apiRequest<{
     orderId: string;
     amount: number;
@@ -403,6 +530,9 @@ export async function initiatePayment(token: string, payload: InitiatePaymentPay
 }
 
 export async function verifyPayment(token: string, payload: VerifyPaymentPayload) {
+  if (isMockEnabled()) {
+    return mockStore.verifyPayment(payload);
+  }
   return apiRequest<PaymentTransaction>(
     '/payments/verify',
     { method: 'POST', body: JSON.stringify(payload) },
@@ -413,6 +543,9 @@ export async function verifyPayment(token: string, payload: VerifyPaymentPayload
 // ── Returns & Refunds API ───────────────────────────────────
 
 export async function submitReturnRequest(token: string, payload: CreateReturnPayload) {
+  if (isMockEnabled()) {
+    return mockStore.submitReturnRequest(payload);
+  }
   return apiRequest<ReturnRequest>(
     '/returns',
     { method: 'POST', body: JSON.stringify(payload) },
@@ -421,10 +554,16 @@ export async function submitReturnRequest(token: string, payload: CreateReturnPa
 }
 
 export async function fetchBuyerReturns(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getBuyerReturns();
+  }
   return apiRequest<ReturnRequest[]>('/returns/buyer', { method: 'GET' }, token);
 }
 
 export async function fetchSellerReturns(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getSellerReturns();
+  }
   return apiRequest<ReturnRequest[]>('/returns/seller', { method: 'GET' }, token);
 }
 
@@ -433,6 +572,9 @@ export async function updateReturnStatus(
   id: string,
   payload: { status: 'approved' | 'rejected' | 'refunded'; sellerNotes?: string },
 ) {
+  if (isMockEnabled()) {
+    return mockStore.updateReturnStatus(id, payload);
+  }
   return apiRequest<ReturnRequest>(
     `/returns/${id}`,
     { method: 'PATCH', body: JSON.stringify(payload) },
@@ -447,6 +589,9 @@ export async function requestChangesOnProduct(
   id: string,
   changesRequested: string,
 ) {
+  if (isMockEnabled()) {
+    return mockStore.requestChanges(id, changesRequested);
+  }
   return apiRequest<Product>(
     `/admin/products/${id}/request-changes`,
     { method: 'POST', body: JSON.stringify({ changesRequested }) },
@@ -455,10 +600,16 @@ export async function requestChangesOnProduct(
 }
 
 export async function fetchProductVerifications(token: string, productId: string) {
+  if (isMockEnabled()) {
+    return mockStore.getProductVerifications(productId);
+  }
   return apiRequest<VerificationLog[]>(`/admin/verifications/${productId}`, { method: 'GET' }, token);
 }
 
 export async function fetchAdminReports(token: string) {
+  if (isMockEnabled()) {
+    return mockStore.getAdminReports();
+  }
   return apiRequest<CommunityReport[]>('/admin/reports', { method: 'GET' }, token);
 }
 
@@ -467,6 +618,9 @@ export async function resolveAdminReport(
   id: string,
   payload: { status: 'resolved' | 'dismissed'; resolutionNotes?: string },
 ) {
+  if (isMockEnabled()) {
+    return mockStore.resolveAdminReport(id, payload);
+  }
   return apiRequest<CommunityReport>(
     `/admin/reports/${id}`,
     { method: 'PATCH', body: JSON.stringify(payload) },
@@ -475,19 +629,28 @@ export async function resolveAdminReport(
 }
 
 export async function removeProductByAdmin(token: string, id: string) {
+  if (isMockEnabled()) {
+    mockStore.deleteProduct(id);
+    return { success: true, message: 'Product removed by administrator' };
+  }
   return apiRequest<{ success: boolean; message: string }>(
     `/admin/products/${id}`,
     { method: 'DELETE' },
-    token,
   );
 }
 
 export async function fetchAdminUsers(token: string, search?: string) {
+  if (isMockEnabled()) {
+    return mockStore.getAdminUsers(search);
+  }
   const query = search ? `?search=${encodeURIComponent(search)}` : '';
   return apiRequest<User[]>(`/admin/users${query}`, { method: 'GET' }, token);
 }
 
 export async function fetchAdminUserById(token: string, id: string) {
+  if (isMockEnabled()) {
+    return mockStore.getAdminUserById(id);
+  }
   return apiRequest<User & { activeListings: number; reportsAgainstUser: number }>(
     `/admin/users/${id}`,
     { method: 'GET' },
@@ -496,11 +659,12 @@ export async function fetchAdminUserById(token: string, id: string) {
 }
 
 export async function updateUserStatus(token: string, id: string, status: 'active' | 'suspended') {
+  if (isMockEnabled()) {
+    return mockStore.updateUserStatus(id, status);
+  }
   return apiRequest<User>(
     `/admin/users/${id}/status`,
     { method: 'PATCH', body: JSON.stringify({ status }) },
     token,
   );
 }
-
-

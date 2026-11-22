@@ -14,6 +14,14 @@ node_modules/
 mobile/.expo/
 mobile/dist/
 mobile/web-build/
+mobile/android/
+mobile/ios/
+android/
+ios/
+
+# Temporary captures
+screen_verification.png
+mobile/screen_verification.png
 
 # EAS
 mobile/eas-build-*.log

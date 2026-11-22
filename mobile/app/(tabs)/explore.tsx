@@ -9,6 +9,7 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { ClayHeader, ClayInput, ClayCard, ProductCard, ClayButton } from '@components/index';
 import { Colors, Spacing, Typography } from '@constants/theme';
@@ -101,6 +102,10 @@ export default function ExploreScreen() {
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
           renderItem={({ item }) => (
             <ProductCard product={item} style={styles.card} />
           )}

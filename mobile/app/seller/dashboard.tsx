@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { ClayButton, ClayCard, StatusBadge } from '@components/index';
+import { ClayButton, ClayCard, StatusBadge, ClayBackButton } from '@components/index';
 import { Colors, Spacing, Typography } from '@constants/theme';
 import {
   fetchMyListings,
@@ -35,6 +35,8 @@ const statusForTab: Record<Tab, Product['status'][]> = {
 export default function SellerDashboard() {
   const router = useRouter();
   const { getToken } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [activeTab, setActiveTab] = useState<Tab>('active');
   const [listings, setListings] = useState<Product[]>([]);
@@ -46,7 +48,7 @@ export default function SellerDashboard() {
   const loadListings = useCallback(async () => {
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) {
         throw new Error('Please sign in to view your seller dashboard.');
       }
@@ -60,10 +62,9 @@ export default function SellerDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
-    setLoading(true);
     loadListings();
   }, [loadListings]);
 
@@ -142,12 +143,7 @@ export default function SellerDashboard() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <ClayButton
-          label="← Back"
-          variant="ghost"
-          onPress={() => router.back()}
-          textStyle={{ color: Colors.text }}
-        />
+        <ClayBackButton size={38} />
         <Text style={[Typography.h2, styles.title]}>Seller Dashboard</Text>
       </View>
 

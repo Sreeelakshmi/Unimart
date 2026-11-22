@@ -1,7 +1,7 @@
 // mobile/components/product/ProductCard.tsx
-// Product listing card with clay styling, image, price and status badge
+// Product listing card with clay styling, image, price and status badge (memoized for 60fps scrolling)
 
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Pressable,
   View,
@@ -14,7 +14,14 @@ import { useRouter } from 'expo-router';
 import { ClayCard } from '@components/clay/ClayCard';
 import { StatusBadge } from './StatusBadge';
 import type { Product } from '@shared/index';
-import { Colors, Spacing, Radius, FontSize, FontWeight } from '@constants/theme';
+import {
+  Colors,
+  Spacing,
+  Radius,
+  FontSize,
+  FontWeight,
+  PLACEHOLDER_PRODUCT_IMAGE,
+} from '@constants/theme';
 
 interface ProductCardProps {
   product: Product;
@@ -23,9 +30,7 @@ interface ProductCardProps {
   onWishlistToggle?: () => void;
 }
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/160x120/B9A0EB/FFFFFF?text=📦';
-
-export function ProductCard({
+function ProductCardComponent({
   product,
   style,
   isWishlisted,
@@ -41,12 +46,13 @@ export function ProductCard({
       style={style}
     >
       <ClayCard style={styles.card}>
-        {/* Image with status badge overlay */}
+        {/* Image with status badge overlay — clipped at wrapper level */}
         <View style={styles.imageWrapper}>
           <Image
-            source={{ uri: product.images[0] ?? PLACEHOLDER_IMAGE }}
+            source={{ uri: product.images[0] ?? PLACEHOLDER_PRODUCT_IMAGE }}
             style={styles.image}
             resizeMode="cover"
+            fadeDuration={100}
             accessibilityIgnoresInvertColors
           />
           <View style={styles.badgeOverlay}>
@@ -83,16 +89,18 @@ export function ProductCard({
 const styles = StyleSheet.create({
   card: {
     padding: 0,
-    overflow: 'hidden',
+    // Outer card does not use overflow: 'hidden' on Android to maintain hardware-accelerated elevation
   },
   imageWrapper: {
     position: 'relative',
+    borderTopLeftRadius: Radius.md,
+    borderTopRightRadius: Radius.md,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
     height: 120,
-    borderTopLeftRadius: Radius.md,
-    borderTopRightRadius: Radius.md,
+    backgroundColor: Colors.border,
   },
   badgeOverlay: {
     position: 'absolute',
@@ -133,3 +141,4 @@ const styles = StyleSheet.create({
   },
 });
 
+export const ProductCard = memo(ProductCardComponent);

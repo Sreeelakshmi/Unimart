@@ -44,6 +44,8 @@ export default function EditProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getToken, userId } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
@@ -62,7 +64,7 @@ export default function EditProductScreen() {
     if (!id) return;
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Authentication required.');
       const data = await fetchProductById(id, token);
       setProduct(data);
@@ -78,7 +80,7 @@ export default function EditProductScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, getToken]);
+  }, [id]);
 
   useEffect(() => {
     loadProduct();

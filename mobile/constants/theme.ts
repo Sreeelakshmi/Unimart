@@ -2,7 +2,7 @@
 // Design tokens — single source of truth for all styling.
 // Every component must import from here; no raw hex values in components.
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
 export const Colors = {
   background: '#F3EEFA',
@@ -54,14 +54,29 @@ export const FontWeight = {
   bold: '700' as const,
 };
 
-/** Reusable claymorphism outer elevation shadow */
-export const clayElevation = {
-  shadowColor: Colors.shadowColor,
-  shadowOffset: { width: 4, height: 6 },
-  shadowOpacity: 0.35,
-  shadowRadius: 10,
-  elevation: 8,
-} as const;
+/** Reusable claymorphism outer elevation shadow, optimized for 60fps on mobile */
+export const clayElevation = Platform.select({
+  ios: {
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 4, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+  },
+  android: {
+    elevation: 3,
+  },
+  default: {
+    shadowColor: Colors.shadowColor,
+    shadowOffset: { width: 4, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+});
+
+/** High-availability fast CDN placeholder for products (replaces slow via.placeholder.com) */
+export const PLACEHOLDER_PRODUCT_IMAGE =
+  'https://images.unsplash.com/photo-1526738549149-8e07eca6c147?w=400&q=75&auto=format';
 
 /** Typography presets */
 export const Typography = StyleSheet.create({
@@ -74,4 +89,3 @@ export const Typography = StyleSheet.create({
   captionBold: { fontSize: FontSize.caption, fontWeight: FontWeight.semiBold, color: Colors.textSecondary },
   button: { fontSize: FontSize.button, fontWeight: FontWeight.bold, color: Colors.white },
 });
-

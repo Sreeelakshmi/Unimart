@@ -21,6 +21,8 @@ import type { Product } from '../../../shared/types';
 export default function WishlistScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +32,7 @@ export default function WishlistScreen() {
   const loadWishlist = useCallback(async () => {
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Authentication required.');
       const data = await fetchWishlist(token);
       setProducts(data);
@@ -40,10 +42,9 @@ export default function WishlistScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
-    setLoading(true);
     loadWishlist();
   }, [loadWishlist]);
 

@@ -1,5 +1,5 @@
 // mobile/app/(auth)/login.tsx
-// Login screen with Clerk authentication and automatic database synchronization
+// Login screen with Clerk authentication, 2FA/MFA factor support, and automatic database synchronization
 
 import React, { useState } from 'react';
 import {
@@ -26,6 +26,33 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 2FA / Secondary factor verification state
+  const [pendingFactor, setPendingFactor] = useState(false);
+  const [factorCode, setFactorCode] = useState('');
+  const [factorStrategy, setFactorStrategy] = useState<'totp' | 'email_code' | 'phone_code'>('totp');
+  const [factorMessage, setFactorMessage] = useState('');
+
+  const completeAuthAndSync = async (sessionId: string, userData?: { firstName?: string | null; lastName?: string | null }) => {
+    if (setActive) {
+      await setActive({ session: sessionId });
+    }
+
+    // Synchronize user to Neon PostgreSQL database
+    try {
+      const token = await getToken();
+      if (token) {
+        await syncUserWithBackend(token, {
+          fullName: `${userData?.firstName || ''} ${userData?.lastName || ''}`.trim() || 'Campus Student',
+          email: email.trim(),
+        });
+      }
+    } catch (syncErr) {
+      console.warn('[Sync warning]', syncErr);
+    }
+
+    router.replace('/(tabs)/home');
+  };
+
   const handleSignIn = async () => {
     if (!isLoaded || !signIn) return;
     if (!email.trim() || !password) {
@@ -43,26 +70,55 @@ export default function LoginScreen() {
       });
 
       if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
-
-        // Synchronize user to Neon PostgreSQL database
-        try {
-          const token = await getToken();
-          if (token) {
-            await syncUserWithBackend(token, {
-              fullName: `${result.userData?.firstName || ''} ${
-                result.userData?.lastName || ''
-              }`.trim() || 'Campus Student',
-              email: email.trim(),
-            });
-          }
-        } catch (syncErr) {
-          console.warn('[Sync warning]', syncErr);
+        if (result.createdSessionId) {
+          await completeAuthAndSync(result.createdSessionId, result.userData);
         }
+      } else if (result.status === 'needs_second_factor') {
+        // Multi-Factor Authentication (2FA) or Device Trust required
+        const isTotp = result.supportedSecondFactors?.some((f) => f.strategy === 'totp');
+        const emailFactor = result.supportedSecondFactors?.find((f) => f.strategy === 'email_code');
+        const phoneFactor = result.supportedSecondFactors?.find((f) => f.strategy === 'phone_code');
 
-        router.replace('/(tabs)/home');
+        if (isTotp) {
+          setFactorStrategy('totp');
+          setFactorMessage('Please enter the 6-digit code from your Authenticator app.');
+          setPendingFactor(true);
+        } else if (emailFactor) {
+          await signIn.prepareSecondFactor({ strategy: 'email_code' });
+          setFactorStrategy('email_code');
+          setFactorMessage(`A verification code was sent to ${email.trim()}.`);
+          setPendingFactor(true);
+        } else if (phoneFactor) {
+          await signIn.prepareSecondFactor({ strategy: 'phone_code' });
+          setFactorStrategy('phone_code');
+          setFactorMessage('A verification code was sent via SMS.');
+          setPendingFactor(true);
+        } else {
+          setError(
+            'Two-factor authentication is required by your Clerk configuration. Please complete 2FA or turn off Multi-factor in dashboard.clerk.com.',
+          );
+        }
+      } else if (result.status === 'needs_first_factor') {
+        // Email verification code or first factor required
+        const emailCodeFactor = result.supportedFirstFactors?.find(
+          (f) => f.strategy === 'email_code',
+        );
+
+        if (emailCodeFactor && 'emailAddressId' in emailCodeFactor) {
+          await signIn.prepareFirstFactor({
+            strategy: 'email_code',
+            emailAddressId: emailCodeFactor.emailAddressId,
+          });
+          setFactorStrategy('email_code');
+          setFactorMessage('Your email requires verification. A code has been sent to your inbox.');
+          setPendingFactor(true);
+        } else {
+          setError(
+            'Email verification required. Please check your inbox or verify your account via sign up.',
+          );
+        }
       } else {
-        setError('Additional authentication factors required.');
+        setError(`Sign in incomplete (status: ${result.status}). Please check your Clerk dashboard settings.`);
       }
     } catch (err: unknown) {
       const msg =
@@ -70,6 +126,59 @@ export default function LoginScreen() {
           ? err.message
           : (err as { errors?: Array<{ message: string }> })?.errors?.[0]?.message ||
             'Sign in failed. Please verify your credentials.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyFactor = async () => {
+    if (!isLoaded || !signIn) return;
+    if (!factorCode.trim()) {
+      setError('Please enter the verification code.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      let completeResult;
+      if (signIn.status === 'needs_second_factor') {
+        if (factorStrategy === 'totp') {
+          completeResult = await signIn.attemptSecondFactor({
+            strategy: 'totp',
+            code: factorCode.trim(),
+          });
+        } else if (factorStrategy === 'email_code') {
+          completeResult = await signIn.attemptSecondFactor({
+            strategy: 'email_code',
+            code: factorCode.trim(),
+          });
+        } else {
+          completeResult = await signIn.attemptSecondFactor({
+            strategy: 'phone_code',
+            code: factorCode.trim(),
+          });
+        }
+      } else if (signIn.status === 'needs_first_factor') {
+        completeResult = await signIn.attemptFirstFactor({
+          strategy: 'email_code',
+          code: factorCode.trim(),
+        });
+      }
+
+      if (completeResult?.status === 'complete' && completeResult.createdSessionId) {
+        await completeAuthAndSync(completeResult.createdSessionId, completeResult.userData);
+      } else {
+        setError('Verification incomplete. Please verify the code and try again.');
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { errors?: Array<{ message: string }> })?.errors?.[0]?.message ||
+            'Verification failed. Invalid code.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -94,54 +203,98 @@ export default function LoginScreen() {
           </Text>
         </View>
 
-        {/* Login card */}
+        {/* Login or 2FA card */}
         <ClayCard style={styles.card}>
-          <Text style={[Typography.h2, styles.cardTitle]}>Welcome back</Text>
-          <Text style={[Typography.caption, styles.cardSubtitle]}>
-            Sign in with your university account
-          </Text>
+          {pendingFactor ? (
+            <>
+              <Text style={[Typography.h2, styles.cardTitle]}>Two-Factor Verification</Text>
+              <Text style={[Typography.caption, styles.cardSubtitle]}>
+                {factorMessage || 'Enter the code to complete sign in'}
+              </Text>
 
-          <ClayInput
-            label="University Email"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (error) setError('');
-            }}
-            placeholder="student@university.edu"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            containerStyle={styles.field}
-          />
+              <ClayInput
+                label="Verification Code"
+                value={factorCode}
+                onChangeText={(text) => {
+                  setFactorCode(text);
+                  if (error) setError('');
+                }}
+                placeholder="123456"
+                keyboardType="number-pad"
+                autoComplete="one-time-code"
+                maxLength={6}
+                error={error}
+                containerStyle={styles.field}
+              />
 
-          <ClayInput
-            label="Password"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              if (error) setError('');
-            }}
-            placeholder="••••••••"
-            secureTextEntry
-            autoComplete="current-password"
-            error={error}
-            containerStyle={styles.field}
-          />
+              <ClayButton
+                label="Verify & Sign In"
+                onPress={handleVerifyFactor}
+                loading={loading}
+                style={styles.button}
+              />
 
-          <ClayButton
-            label="Sign In"
-            onPress={handleSignIn}
-            loading={loading}
-            style={styles.button}
-          />
+              <ClayButton
+                label="Cancel"
+                variant="ghost"
+                onPress={() => {
+                  setPendingFactor(false);
+                  setFactorCode('');
+                  setError('');
+                }}
+                style={styles.cancelButton}
+              />
+            </>
+          ) : (
+            <>
+              <Text style={[Typography.h2, styles.cardTitle]}>Welcome back</Text>
+              <Text style={[Typography.caption, styles.cardSubtitle]}>
+                Sign in with your university account
+              </Text>
 
-          <View style={styles.footer}>
-            <Text style={Typography.caption}>Don't have an account? </Text>
-            <Link href="/(auth)/signup">
-              <Text style={styles.link}>Sign Up</Text>
-            </Link>
-          </View>
+              <ClayInput
+                label="University Email"
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (error) setError('');
+                }}
+                placeholder="student@university.edu"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                containerStyle={styles.field}
+              />
+
+              <ClayInput
+                label="Password"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (error) setError('');
+                }}
+                placeholder="••••••••"
+                secureTextEntry
+                autoComplete="current-password"
+                error={error}
+                containerStyle={styles.field}
+              />
+
+              <ClayButton
+                label="Sign In"
+                onPress={handleSignIn}
+                loading={loading}
+                style={styles.button}
+              />
+
+              <View style={styles.footer}>
+                <Text style={Typography.caption}>Don't have an account? </Text>
+                <Link href="/(auth)/signup">
+                  <Text style={styles.link}>Sign Up</Text>
+                </Link>
+              </View>
+            </>
+          )}
         </ClayCard>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -183,6 +336,9 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: Spacing.sm,
+  },
+  cancelButton: {
+    marginTop: Spacing.xs,
   },
   footer: {
     flexDirection: 'row',

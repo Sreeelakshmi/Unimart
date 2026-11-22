@@ -15,17 +15,19 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { ClayHeader, ClayCard, ClayButton, StatusBadge } from '@components/index';
-import { Colors, Spacing, Radius, Typography, FontSize, FontWeight } from '@constants/theme';
+import { Colors, Spacing, Radius, Typography, FontSize, FontWeight, PLACEHOLDER_PRODUCT_IMAGE } from '@constants/theme';
 import { fetchMyBuyerOrders, fetchMySellerOrders } from '../../services/api';
 import type { Order } from '../../../shared/types';
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/160x120/B9A0EB/FFFFFF?text=🛍️';
+const PLACEHOLDER_IMAGE = PLACEHOLDER_PRODUCT_IMAGE;
 
 type OrdersTab = 'purchases' | 'sales';
 
 export default function MyOrdersScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [activeTab, setActiveTab] = useState<OrdersTab>('purchases');
   const [purchases, setPurchases] = useState<Order[]>([]);
@@ -37,7 +39,7 @@ export default function MyOrdersScreen() {
   const loadOrders = useCallback(async () => {
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Authentication required.');
 
       const [buyerData, sellerData] = await Promise.all([
@@ -52,10 +54,9 @@ export default function MyOrdersScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
-    setLoading(true);
     loadOrders();
   }, [loadOrders]);
 
@@ -68,7 +69,7 @@ export default function MyOrdersScreen() {
 
   return (
     <View style={styles.container}>
-      <ClayHeader title="My Orders" subtitle="Track your campus purchases & sales" />
+      <ClayHeader title="My Orders" subtitle="Track your campus purchases & sales" showBack={true} />
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>

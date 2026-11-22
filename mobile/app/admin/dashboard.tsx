@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser, useAuth } from '@clerk/clerk-expo';
-import { ClayButton, ClayCard, StatusBadge, ClayInput } from '@components/index';
+import { ClayButton, ClayCard, StatusBadge, ClayInput, ClayBackButton } from '@components/index';
 import { Colors, Spacing, Radius, Typography, FontSize, FontWeight } from '@constants/theme';
 import {
   fetchPendingApprovals,
@@ -36,6 +36,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useUser();
   const { getToken } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [activeTab, setActiveTab] = useState<AdminTab>('pending');
   const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
@@ -67,7 +69,7 @@ export default function AdminDashboard() {
     if (!isAuthorized) return;
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Not authenticated.');
 
       if (activeTab === 'pending') {
@@ -86,7 +88,7 @@ export default function AdminDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isAuthorized, activeTab, userSearch, getToken]);
+  }, [isAuthorized, activeTab, userSearch]);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -255,7 +257,7 @@ export default function AdminDashboard() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <ClayButton label="← Back" variant="ghost" onPress={() => router.back()} textStyle={{ color: Colors.text }} />
+          <ClayBackButton size={38} />
         </View>
         <ClayCard variant="peach" style={styles.blocked}>
           <Text style={styles.blockedIcon}>🚫</Text>
@@ -272,7 +274,7 @@ export default function AdminDashboard() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <ClayButton label="← Back" variant="ghost" onPress={() => router.back()} textStyle={{ color: Colors.text }} />
+        <ClayBackButton size={38} />
         <Text style={[Typography.h2, styles.title]}>Campus Moderation</Text>
       </View>
 

@@ -25,6 +25,8 @@ import type { AppNotification } from '../../../shared/types';
 export default function NotificationsScreen() {
   const router = useRouter();
   const { getToken } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export default function NotificationsScreen() {
   const loadNotifications = useCallback(async () => {
     setError(null);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Authentication required.');
       const data = await fetchNotifications(token);
       setNotifications(data);
@@ -44,10 +46,9 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
-    setLoading(true);
     loadNotifications();
   }, [loadNotifications]);
 

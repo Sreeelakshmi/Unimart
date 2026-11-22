@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { ClayButton, ClayCard, ClayInput, StatusBadge } from '@components/index';
-import { Colors, Spacing, Radius, Typography } from '@constants/theme';
+import { ClayButton, ClayCard, ClayInput, StatusBadge, ClayBackButton } from '@components/index';
+import { Colors, Spacing, Radius, Typography, PLACEHOLDER_PRODUCT_IMAGE } from '@constants/theme';
 import {
   fetchProductById,
   addToWishlist,
@@ -26,8 +26,7 @@ import {
 } from '../../services/api';
 import type { Product, ReportReason } from '../../../shared/types';
 
-const PLACEHOLDER_IMAGE =
-  'https://via.placeholder.com/400x300/B9A0EB/FFFFFF?text=🛍️';
+const PLACEHOLDER_IMAGE = PLACEHOLDER_PRODUCT_IMAGE;
 
 const conditionLabel: Record<string, string> = {
   new: 'Brand New',
@@ -40,6 +39,8 @@ export default function ProductDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { getToken, userId } = useAuth();
+  const getTokenRef = React.useRef(getToken);
+  getTokenRef.current = getToken;
 
   const [product, setProduct] = useState<Product | null>(null);
   const [inWishlist, setInWishlist] = useState(false);
@@ -57,7 +58,7 @@ export default function ProductDetailsScreen() {
     if (!product) return;
     setSubmittingReport(true);
     try {
-      const token = await getToken();
+      const token = await getTokenRef.current();
       if (!token) throw new Error('Please sign in to submit a report.');
 
       await submitReport(token, {
@@ -83,7 +84,7 @@ export default function ProductDetailsScreen() {
     if (!id) return;
     setError(null);
     try {
-      const token = await getToken().catch(() => null);
+      const token = await getTokenRef.current().catch(() => null);
       const data = await fetchProductById(id, token);
       setProduct(data);
       if (token) {
@@ -98,7 +99,7 @@ export default function ProductDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [id, getToken]);
+  }, [id]);
 
   const handleToggleWishlist = async () => {
     if (!id) return;
@@ -167,14 +168,9 @@ export default function ProductDetailsScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* Header with modern circular ClayBackButton */}
       <View style={styles.header}>
-        <ClayButton
-          label="← Back"
-          variant="ghost"
-          onPress={() => router.back()}
-          textStyle={{ color: Colors.text }}
-        />
+        <ClayBackButton size={40} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
