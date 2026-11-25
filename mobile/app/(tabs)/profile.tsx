@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import { ClayHeader, ClayCard, ClayButton } from '@components/index';
 import { Colors, Spacing, Typography } from '@constants/theme';
 import { fetchMyProfile, isMockEnabled } from '../../services/api';
+import { setDemoUser } from '../../services/demoAuth';
 import type { UserProfile } from '../../../shared/types';
 
 export default function ProfileScreen() {
@@ -65,7 +66,8 @@ export default function ProfileScreen() {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
-          await signOut();
+          setDemoUser(false);
+          await signOut().catch(() => {});
           router.replace('/(auth)/login');
         },
       },

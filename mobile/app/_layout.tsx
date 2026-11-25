@@ -4,7 +4,7 @@
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   View,
@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { ClayCard } from '@components/clay/ClayCard';
 import { Colors, Spacing, FontSize, FontWeight, Radius } from '@constants/theme';
+import { getIsDemoUser, subscribeDemoUser } from '../services/demoAuth';
 
 const publishableKey =
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
@@ -101,18 +102,27 @@ function MissingClerkConfigScreen() {
 /** Redirect authenticated/unauthenticated users to the right stack */
 function AuthGate() {
   const { isLoaded, isSignedIn } = useAuth();
+  const [isDemo, setIsDemo] = useState(getIsDemoUser());
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
+    return subscribeDemoUser(() => {
+      setIsDemo(getIsDemoUser());
+    });
+  }, []);
+
+  useEffect(() => {
     if (!isLoaded) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (isSignedIn && inAuthGroup) {
+    const authenticated = isSignedIn || isDemo;
+
+    if (authenticated && inAuthGroup) {
       router.replace('/(tabs)/home');
-    } else if (!isSignedIn && !inAuthGroup) {
+    } else if (!authenticated && !inAuthGroup) {
       router.replace('/(auth)/login');
     }
-  }, [isLoaded, isSignedIn, segments, router]);
+  }, [isLoaded, isSignedIn, isDemo, segments, router]);
 
   return <Slot />;
 }

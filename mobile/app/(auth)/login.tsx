@@ -9,12 +9,14 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { useSignIn, useAuth } from '@clerk/clerk-expo';
 import { ClayCard, ClayInput, ClayButton } from '@components/index';
-import { Colors, Spacing, FontSize, FontWeight, Typography } from '@constants/theme';
+import { Colors, Spacing, FontSize, FontWeight, Typography, Radius } from '@constants/theme';
 import { syncUserWithBackend } from '../../services/api';
+import { setDemoUser } from '../../services/demoAuth';
 
 export default function LoginScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -287,6 +289,46 @@ export default function LoginScreen() {
                 style={styles.button}
               />
 
+              {/* One-Tap Demo Access */}
+              <View style={styles.demoSection}>
+                <View style={styles.demoDividerRow}>
+                  <View style={styles.demoDividerLine} />
+                  <Text style={styles.demoDividerText}>OR INSTANT DEMO</Text>
+                  <View style={styles.demoDividerLine} />
+                </View>
+
+                <ClayButton
+                  label="⚡ Explore as Student Demo (Priya)"
+                  variant="mint"
+                  onPress={() => {
+                    setDemoUser(true);
+                    router.replace('/(tabs)/home');
+                  }}
+                  style={styles.demoButton}
+                />
+
+                <View style={styles.autofillRow}>
+                  <Pressable
+                    onPress={() => {
+                      setEmail('priya.patel+clerk_test@campus.edu');
+                      setPassword('TestPass123!');
+                    }}
+                    style={styles.autofillChip}
+                  >
+                    <Text style={styles.autofillText}>Fill Student</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      setEmail('aditya.rao+clerk_test@campus.edu');
+                      setPassword('AdminPass123!');
+                    }}
+                    style={styles.autofillChip}
+                  >
+                    <Text style={styles.autofillText}>Fill Admin</Text>
+                  </Pressable>
+                </View>
+              </View>
+
               <View style={styles.footer}>
                 <Text style={Typography.caption}>Don't have an account? </Text>
                 <Link href="/(auth)/signup">
@@ -350,5 +392,49 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     fontWeight: FontWeight.semiBold,
     color: Colors.primary,
+  },
+  demoSection: {
+    marginTop: Spacing.md,
+    gap: Spacing.xs,
+  },
+  demoDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  demoDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#ECE4F7',
+  },
+  demoDividerText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#8C7D9E',
+    letterSpacing: 0.6,
+  },
+  demoButton: {
+    minHeight: 44,
+  },
+  autofillRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 2,
+  },
+  autofillChip: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    backgroundColor: '#F3EEFA',
+    borderRadius: Radius.sm,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ECE4F7',
+  },
+  autofillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6C47B2',
   },
 });

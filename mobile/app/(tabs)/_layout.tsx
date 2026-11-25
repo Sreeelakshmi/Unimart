@@ -1,11 +1,11 @@
 // mobile/app/(tabs)/_layout.tsx
-// Bottom tab navigator with high-visibility vector icons and clay styling
+// Bottom tab navigator with animated spring icons, clay active pills, and smooth transitions
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Spacing, FontSize } from '@constants/theme';
+import { Colors, Radius, Spacing } from '@constants/theme';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -18,11 +18,28 @@ interface TabIconProps {
 }
 
 function TabIcon({ name, focusedName, focused, color, badgeCount }: TabIconProps) {
+  const scaleAnim = useRef(new Animated.Value(focused ? 1.08 : 1)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: focused ? 1.1 : 1,
+      useNativeDriver: true,
+      friction: 5,
+      tension: 180,
+    }).start();
+  }, [focused, scaleAnim]);
+
   return (
-    <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
+    <Animated.View
+      style={[
+        styles.iconWrapper,
+        focused && styles.activeIconWrapper,
+        { transform: [{ scale: scaleAnim }] },
+      ]}
+    >
       <Ionicons
         name={focused ? focusedName : name}
-        size={22}
+        size={21}
         color={focused ? '#6C47B2' : '#8C7D9E'}
       />
       {badgeCount && badgeCount > 0 ? (
@@ -30,7 +47,7 @@ function TabIcon({ name, focusedName, focused, color, badgeCount }: TabIconProps
           <Text style={styles.badgeText}>{badgeCount > 9 ? '9+' : badgeCount}</Text>
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -124,31 +141,31 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: Colors.white,
-    borderTopWidth: 1,
+    borderTopWidth: 1.5,
     borderTopColor: '#ECE4F7',
-    height: Platform.OS === 'ios' ? 84 : 64,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    height: Platform.OS === 'ios' ? 88 : 68,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 26 : 10,
     ...Platform.select({
       ios: {
         shadowColor: '#B9A0EB',
         shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.18,
-        shadowRadius: 10,
+        shadowOpacity: 0.22,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 10,
+        elevation: 12,
       },
     }),
   },
   tabLabel: {
     fontSize: 11,
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 3,
   },
   iconWrapper: {
-    width: 44,
-    height: 30,
+    width: 46,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.full,
@@ -156,12 +173,14 @@ const styles = StyleSheet.create({
   },
   activeIconWrapper: {
     backgroundColor: '#EFE7FC',
+    borderWidth: 1,
+    borderColor: '#D8C9FA',
   },
   badge: {
     position: 'absolute',
-    top: -2,
+    top: -3,
     right: 2,
-    backgroundColor: '#FF5252',
+    backgroundColor: '#FF4B72',
     minWidth: 16,
     height: 16,
     borderRadius: 8,
