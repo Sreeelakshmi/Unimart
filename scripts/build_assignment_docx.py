@@ -441,23 +441,29 @@ def main():
 
     # SECTION 17: REFERENCES
     add_styled_heading(doc, "17. References", level=1)
-    add_body_p(doc, "The following academic and industry standards, textbooks, and technical specifications were utilized in the requirement analysis, UML system modeling, and implementation of the Unimart Campus Marketplace System:", space_after=6)
+    add_body_p(doc, "The following academic standards, official documentation, and technical specifications were utilized in the system requirements analysis, UML modeling, and implementation of the Unimart Campus Marketplace:", space_after=6)
 
     references_data = [
-        ("[1]", "I. Sommerville, Software Engineering, 10th ed. Boston, MA, USA: Pearson Education, 2016. (Referenced for Requirements Engineering, Non-Functional Constraints, and System Verification)."),
-        ("[2]", "R. S. Pressman and B. R. Maxim, Software Engineering: A Practitioner's Approach, 9th ed. New York, NY, USA: McGraw-Hill Education, 2020. (Referenced for Component-Level Design and Structured Test Suite Construction)."),
-        ("[3]", "C. Larman, Applying UML and Patterns: An Introduction to Object-Oriented Analysis and Design and Iterative Development, 3rd ed. Upper Saddle River, NJ, USA: Prentice Hall, 2004. (Referenced for Use Case Modeling, Interaction Sequence Diagrams, Statecharts, and GRASP Principles)."),
-        ("[4]", "M. Fowler, UML Distilled: A Brief Guide to the Standard Object Modeling Language, 3rd ed. Boston, MA, USA: Addison-Wesley, 2003. (Referenced for UML 2.0 Dia-Style Use Case Inclusions/Extensions, Activity Flows, and Class Multiplicities)."),
-        ("[5]", "Object Management Group (OMG), OMG Unified Modeling Language (OMG UML) Specification, Version 2.5.1, OMG Standard formal/2017-12-05, Dec. 2017. [Online]. Available: https://www.omg.org/spec/UML/2.5.1/"),
-        ("[6]", "G. Booch, J. Rumbaugh, and I. Jacobson, The Unified Modeling Language User Guide, 2nd ed. Upper Saddle River, NJ, USA: Addison-Wesley, 2005. (Referenced for Structural and Behavioral System Decomposition)."),
-        ("[7]", "P. Resnick, K. Kuwabara, R. Zeckhauser, and E. Friedman, \"Reputation systems: Facilitating trust in internet interactions,\" Communications of the ACM, vol. 43, no. 12, pp. 45-48, Dec. 2000. doi: 10.1145/355112.355122."),
-        ("[8]", "A. J. S. Al-Badi, A. O. Tarhini, and A. I. Khan, \"Trust in Peer-to-Peer E-Commerce Platforms: An Empirical Evaluation,\" International Journal of Electronic Commerce Studies, vol. 9, no. 1, pp. 1-26, 2018."),
-        ("[9]", "National Payments Corporation of India (NPCI), \"Unified Payments Interface (UPI) System Specifications and Procedural Guidelines,\" NPCI Technical Reference Manual, Mumbai, India, 2021. [Online]. Available: https://www.npci.org.in/"),
-        ("[10]", "E. Rescorla, \"The Transport Layer Security (TLS) Protocol Version 1.3,\" RFC 8446, Internet Engineering Task Force (IETF), Aug. 2018. doi: 10.17487/RFC8446."),
-        ("[11]", "Meta Platforms Inc. & Expo Team, \"React Native Architecture and Mobile Runtime Documentation,\" 2024. [Online]. Available: https://reactnative.dev/docs/architecture-overview"),
-        ("[12]", "Neon Inc., \"Serverless Postgres Architecture and Branching on Cloud Infrastructure,\" Neon Technical Documentation, 2024. [Online]. Available: https://neon.tech/docs/"),
-        ("[13]", "Drizzle Team, \"Drizzle ORM: TypeScript-First Object Relational Mapping,\" 2024. [Online]. Available: https://orm.drizzle.team/"),
-        ("[14]", "Clerk Inc., \"Modern Authentication and Role-Based Access Control Architecture,\" Clerk Developer Documentation, 2024. [Online]. Available: https://clerk.com/docs")
+        ("1.", "Expo Documentation — Expo SDK 51 & Expo Router: https://docs.expo.dev"),
+        ("2.", "Meta Open Source — React Native 0.74 Architecture & Pressable/Layout APIs: https://reactnative.dev"),
+        ("3.", "Software Mansion — React Native Reanimated & Gesture Handler: https://docs.swmansion.com"),
+        ("4.", "Clerk — Authentication & Session Management for Expo and Express: https://clerk.com/docs"),
+        ("5.", "Drizzle Team — Drizzle ORM PostgreSQL Schema & Queries: https://orm.drizzle.team/docs"),
+        ("6.", "Neon — Serverless PostgreSQL & Branching: https://neon.tech/docs"),
+        ("7.", "OMG — Unified Modeling Language (UML 2.5.1) Specification: https://www.omg.org/spec/UML/"),
+        ("8.", "Google DeepMind — Gemini API & Multimodal AI Verification: https://ai.google.dev/docs"),
+        ("9.", "NPCI — Unified Payments Interface (UPI) Procedural Guidelines: https://www.npci.org.in"),
+        ("10.", "Fastify / Express — Node.js RESTful Web Services & Routing Engine: https://fastify.dev/docs"),
+        ("11.", "Microsoft — TypeScript 5.x Static Typing & Compiler Specifications: https://www.typescriptlang.org/docs"),
+        ("12.", "Colinhacks — Zod TypeScript-First Schema Validation: https://zod.dev"),
+        ("13.", "Lucide Icons — Open-Source Vector Icon System for Mobile: https://lucide.dev"),
+        ("14.", "Martin Fowler — Software Architecture Patterns & UML Modeling: https://martinfowler.com"),
+        ("15.", "Ian Sommerville — Software Engineering & Requirements Specifications: https://iansommerville.com"),
+        ("16.", "GNOME Project — Dia Diagram Editor & UML Stencil Specification: https://gitlab.gnome.org/GNOME/dia"),
+        ("17.", "IETF — RFC 8446 The Transport Layer Security (TLS) Protocol Version 1.3: https://datatracker.ietf.org/doc/html/rfc8446"),
+        ("18.", "PostgreSQL — PostgreSQL 16 Relational Engine & Constraints: https://www.postgresql.org/docs/"),
+        ("19.", "Android Developers — Android Debug Bridge (ADB) & Hermes Engine Profiling: https://developer.android.com/tools/adb"),
+        ("20.", "Craig Larman — Applying UML and Patterns & Object-Oriented Analysis: https://www.craiglarman.com")
     ]
 
     for ref_num, ref_text in references_data:
